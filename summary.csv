@@ -1,0 +1,16 @@
+ ,scenario 1,scenario 2
+cycles_storage,13.4,4.7
+average_load,54.2 GW,54.2 GW
+lcoe_storage,964.9,4137.9
+lcoe,106.3,434.6
+lcoe_without_storage,72.4,220.7
+overhead_count,0 Hours,3874 Hours
+max_overhead,0.0 GW,325.4 GW
+max_gas,64.1 GW,64.1 GW
+max_wind,53.1 GW,159.2 GW
+max_solar,76.6 GW,306.5 GW
+max_load,73.1 GW,73.1 GW
+wind_ratio,43.8%,131.3%
+solar_ratio,24.1%,96.3%
+gas_ratio,32.1%,32.1%
+storage_ratio,3.5%,2.5%
