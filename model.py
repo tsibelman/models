@@ -2,18 +2,17 @@
 # -*- coding: utf-8 -*-
 
 import matplotlib  # импорт библиотеки рисования графика
-import matplotlib.pyplot as plt
-
 from functions import read_csv, generate_date_range  # импорт функций из файла functions.py
 
 matplotlib.use('agg')
-
 
 # основная функция. принимает на вход период экстраполяции, учитывать ли изменение продуктивности буровых
 # и любое количество сценариев изменения буровых, где 1 = докризисный максимум буровых. Сначала в период экстраполяции
 # буровые растут до поданного на вход значения, потом ещё один период буровые стагнируют
 
+
 def production_model(extrapolation_range, ignore_productivity, *args):
+    import matplotlib.pyplot as plt
     fig = plt.figure(figsize=(10, 15))
     chart1 = fig.add_subplot(311)
     chart1.grid()
@@ -23,7 +22,7 @@ def production_model(extrapolation_range, ignore_productivity, *args):
     chart3.grid()
     cycle = False  # метка прохождения первого цикла
 
-    rig_count_saved, rig_productivity_saved = read_csv('dpr_rigs_and_productivity.csv', 2)  # чтение csv
+    rig_count_saved, rig_productivity_saved = read_csv('data/dpr_rigs_and_productivity.csv', 2)  # чтение csv
     input_length = len(rig_count_saved) - 1  # переменная для длины массива
 
     # создание массивов абсциссы графиков
@@ -76,7 +75,7 @@ def production_model(extrapolation_range, ignore_productivity, *args):
 
         # создание профиля скважин (нормирован к 1)
 
-        for i in range(input_length + 2 * (extrapolation_range) + 75):
+        for i in range(input_length + 2 * extrapolation_range + 75):
             well_profile.append(1 / ((1 + 0.15 * i) ** 0.98))
 
             # экстраполяция буровых и продуктивности
@@ -84,7 +83,7 @@ def production_model(extrapolation_range, ignore_productivity, *args):
         for i in range(2 * extrapolation_range):  # цикл по базовым начальным данным
             if i < extrapolation_range:  # дописать в массив прогнозные значения для буровых и их продуктивности
                 rig_count.append(rig_count[input_length] + rig_count_step * (i + 1))
-                if ignore_productivity == True:
+                if ignore_productivity:
                     rig_productivity.append(rig_productivity[input_length])
                 else:
                     rig_productivity.append(rig_productivity[input_length] + rig_productivity_step * (i + 1))
@@ -92,13 +91,12 @@ def production_model(extrapolation_range, ignore_productivity, *args):
                 rig_count.append(rig_count[input_length + extrapolation_range])
                 rig_productivity.append(rig_productivity[input_length + extrapolation_range])
 
-                # формирование массива добычи до начала ведения статистики EIA DPR (0,4 МБ/д на 2007 год)
-
+        # формирование массива добычи до начала ведения статистики EIA DPR (0,4 МБ/д на 2007 год)
         for i in range(input_length + 2 * extrapolation_range):
             row_matrix.append(405891 * well_profile[i + 75] * 11)
             new_production.append(rig_count[i] * rig_productivity[i] / 1000)  # вычисление ввода добычи
 
-            # создание первой строки в матрице добычи - остаток от начальных 0,4 МБ/д в 2007 году.
+        # создание первой строки в матрице добычи - остаток от начальных 0,4 МБ/д в 2007 году.
         production_matrix.append(row_matrix)
 
         # формирование матрицы добычи по месяцам и по группам скважин
@@ -106,7 +104,8 @@ def production_model(extrapolation_range, ignore_productivity, *args):
         for i in range(input_length + 2 * extrapolation_range):
             row_matrix = []  # обнуляем динамику добычи месячных скважин
 
-            if i >= 1: zeroes.append(0)  # добавляем i нулей в начало строки добычи
+            if i >= 1:
+                zeroes.append(0)  # добавляем i нулей в начало строки добычи
             row_matrix.extend(zeroes)
 
             for j in range(input_length + 2 * extrapolation_range):
@@ -116,28 +115,32 @@ def production_model(extrapolation_range, ignore_productivity, *args):
 
         matrix_transposed = list(map(list, zip(*production_matrix)))
 
-        for i in range(input_length + 2 * extrapolation_range):  # вычисление добычи, в т.ч. деноминированной и снижения старой добычи.
+        # вычисление добычи, в т.ч. деноминированной и снижения старой добычи.
+        for i in range(input_length + 2 * extrapolation_range):
             production.append(sum(matrix_transposed[i]))
             production_denom_m.append(sum(matrix_transposed[i]) / 1000000)
             production_denom_t.append(sum(matrix_transposed[i]) / 1000)
 
             if i != 0:
                 old_production_decline[i] = new_production[i] - (production_denom_t[i] - production_denom_t[i - 1])
-        old_production_decline[0] = old_production_decline[1]  # поправка для отсутствующего первого значения снижения старой добычи
+        # поправка для отсутствующего первого значения снижения старой добычи
+        old_production_decline[0] = old_production_decline[1]
 
-        for i in range(input_length + 1):  # сохранение добычи в подходящий по размеру для графика массив
+        # сохранение добычи в подходящий по размеру для графика массив
+        for i in range(input_length + 1):
             production_for_chart[i] = production_denom_m[i]
             rigs_for_chart[i] = rig_count[i]
             new_production_4chart[i] = new_production[i]
             old_production_decline_4chart[i] = old_production_decline[i]
 
-        for i in range(2 * extrapolation_range):  # сохранение прогноза добычи в подходящий по размеру для графика массив
+        # сохранение прогноза добычи в подходящий по размеру для графика массив
+        for i in range(2 * extrapolation_range):
             production_forecast_for_chart[i] = production_denom_m[i + input_length]
             rigs_forecast_for_chart[i] = rig_count[i + input_length]
             new_production_forecast_4chart[i] = new_production[i + input_length]
             old_production_decline_forecast_4chart[i] = old_production_decline[i + input_length]
 
-        if cycle == False:  # рисование модельных данных без прогноза
+        if not cycle:  # рисование модельных данных без прогноза
             chart1.plot(dates_main, production_for_chart)
             chart2.plot(dates_main, rigs_for_chart)
             chart3.plot(dates_main, new_production_4chart)
