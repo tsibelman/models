@@ -26,45 +26,40 @@ def production_model(extrapolation_range, ignore_productivity, *args):
     input_length = len(rig_count_saved) - 1  # переменная для длины массива
 
     # создание профиля скважин (нормирован к 1)
-    well_profile = []
-    for i in range(input_length + 2 * extrapolation_range + 75):
-        well_profile.append(1 / ((1 + 0.15 * i) ** 0.98))
+    well_profile = [1 / ((1 + 0.15 * x) ** 0.98) for x in range(input_length + 2 * extrapolation_range + 75)]
 
     # цикл по сценариям буровых из аргументов функции
     for rig_ratio in args:
 
-        rig_count = list(map(int,rig_count_saved))
-        rig_productivity = list(map(int,rig_productivity_saved))
+        rig_counts = list(map(int, rig_count_saved))
+        rig_productivity = list(map(int, rig_productivity_saved))
+
+        last_count = rig_counts[-1]
+        last_productivity = rig_productivity[-1]
+
+        # всё что нужно для линейной экстраполяции буровых (из аргументов функции) и продуктивности
+        rig_count_end_value = max(rig_counts) * rig_ratio  # вычисление последнего прогнозируемого количества буровых
+        rig_count_step = (rig_count_end_value - last_count) / (extrapolation_range * 1.0)  # вычисление шага изменения буровых в прогнозе
+        rig_productivity_step = 0
+        if not ignore_productivity:
+            rig_productivity_step = calculate_rig_productivity_step(extrapolation_range, last_count, last_productivity, rig_count_end_value)
+
+        # экстраполяция буровых и продуктивности
+        forecast_rigs, forecast_productivity=generate_forecast(extrapolation_range, last_count, last_productivity, rig_count_step, rig_productivity_step)
+
+        rig_counts.extend(forecast_rigs)
+        rig_productivity.extend(forecast_productivity)
 
         production_matrix = []
         production = []  # добыча
         new_production = []  # ввод добычи
         old_production_decline = [0] * (input_length + 2 * extrapolation_range)
 
-        # всё что нужно для линейной экстраполяции буровых (из аргументов функции) и продуктивности
-        rig_count_end_value = max(rig_count) * rig_ratio  # вычисление последнего прогнозируемого количества буровых
-        rig_count_step = (rig_count_end_value - rig_count[input_length]) / (extrapolation_range * 1.0)  # вычисление шага изменения буровых в прогнозе
-        rig_productivity_coefficient = 2.5 / ((rig_count_end_value / rig_count[input_length]) + 1.5)  # вычисление изменение продуктивности буровых в зависимости от количества
-        rig_productivity_end_value = rig_productivity[input_length] * rig_productivity_coefficient  # вычисление последней прогнозируемой эффективности буровых
-        rig_productivity_step = (rig_productivity_end_value - rig_productivity[input_length]) / extrapolation_range  # вычисление шага продуктивности в прогнозе
-
-        # экстраполяция буровых и продуктивности
-        for i in range(2 * extrapolation_range):  # цикл по базовым начальным данным
-            if i < extrapolation_range:  # дописать в массив прогнозные значения для буровых и их продуктивности
-                rig_count.append(rig_count[input_length] + rig_count_step * (i + 1))
-                if ignore_productivity:
-                    rig_productivity.append(rig_productivity[input_length])
-                else:
-                    rig_productivity.append(rig_productivity[input_length] + rig_productivity_step * (i + 1))
-            else:
-                rig_count.append(rig_count[input_length + extrapolation_range])
-                rig_productivity.append(rig_productivity[input_length + extrapolation_range])
-
         row_matrix = []
         # формирование массива добычи до начала ведения статистики EIA DPR (0,4 МБ/д на 2007 год)
         for i in range(input_length + 2 * extrapolation_range):
             row_matrix.append(405891 * well_profile[i + 75] * 11)
-            new_production.append(rig_count[i] * rig_productivity[i] / 1000)  # вычисление ввода добычи
+            new_production.append(rig_counts[i] * rig_productivity[i] / 1000)  # вычисление ввода добычи
 
         # создание первой строки в матрице добычи - остаток от начальных 0,4 МБ/д в 2007 году.
         production_matrix.append(row_matrix)
@@ -72,9 +67,9 @@ def production_model(extrapolation_range, ignore_productivity, *args):
         # формирование матрицы добычи по месяцам и по группам скважин
         for i in range(input_length + 2 * extrapolation_range):
             row_matrix = [0] * i
-            rigs_productivity = rig_count[i] * rig_productivity[i]
+            rigs_productivity = rig_counts[i] * rig_productivity[i]
             for j in range(input_length + 2 * extrapolation_range):
-                row_matrix.append( rigs_productivity * well_profile[j])
+                row_matrix.append(rigs_productivity * well_profile[j])
             production_matrix.append(row_matrix)
 
         # вычисление добычи
@@ -88,19 +83,18 @@ def production_model(extrapolation_range, ignore_productivity, *args):
         # поправка для отсутствующего первого значения снижения старой добычи
         old_production_decline[0] = old_production_decline[1]
 
-
         production_denom_m = [x / 1000000 for x in production]
         dates_main = generate_date_range('2007-01-01', input_length + 1)
         if not cycle:  # рисование модельных данных без прогноза
             chart1.plot(dates_main, production_denom_m[:input_length + 1])
-            chart2.plot(dates_main, rig_count[:input_length+1])
+            chart2.plot(dates_main, rig_counts[:input_length+1])
             chart3.plot(dates_main, new_production[:input_length + 1])
             chart3.plot(dates_main, old_production_decline[:input_length + 1])
 
         # рисование прогнозов
         dates_forecast = generate_date_range('2017-01-01', 2 * extrapolation_range)
         chart1.plot(dates_forecast, production_denom_m[input_length:], ':')
-        chart2.plot(dates_forecast, rig_count[input_length+1:], ':')
+        chart2.plot(dates_forecast, rig_counts[input_length+1:], ':')
         chart2.set_ylim(ymin=0)  # ордината от нуля
         chart3.plot(dates_forecast, new_production[input_length:])
         chart3.plot(dates_forecast, old_production_decline[input_length:], ':')
@@ -109,5 +103,29 @@ def production_model(extrapolation_range, ignore_productivity, *args):
 
     plt.savefig('chart1.png')  # сохранение нарисованного графика в файл
 
-production_model(20, False, 0.1, 0.4)
 
+def generate_forecast(extrapolation_range, last_rig_count, last_rig_productivity, rig_count_step,
+                      rig_productivity_step):
+    forecast_rigs = []
+    forecast_productivity = []
+    # Фаза роста
+    for i in range(extrapolation_range):  # цикл по базовым начальным данным
+        forecast_rigs.append(last_rig_count + rig_count_step * (i + 1))
+        forecast_productivity.append(last_rig_productivity + rig_productivity_step * (i + 1))
+    last_rig_count = forecast_rigs[-1]
+    last_rig_productivity = forecast_productivity[-1]
+    # Фаза стабильного плато
+    for i in range(extrapolation_range):  # цикл по базовым начальным данным
+        forecast_rigs.append(last_rig_count)
+        forecast_productivity.append(last_rig_productivity)
+
+    return forecast_rigs,forecast_productivity
+
+
+def calculate_rig_productivity_step(extrapolation_range, last_rig_count, last_rig_productivity, rig_count_end_value):
+    coefficient = 2.5 / ((rig_count_end_value / last_rig_count) + 1.5)  # вычисление изменение продуктивности буровых в зависимости от количества
+    end_value = last_rig_productivity * coefficient  # вычисление последней прогнозируемой эффективности буровых
+    return (end_value - last_rig_productivity) / extrapolation_range  # вычисление шага продуктивности в прогнозе
+
+
+production_model(20, False, 0.1, 0.4)
