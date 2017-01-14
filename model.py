@@ -59,10 +59,8 @@ def generate_forecast(extrapolation_range, last_rigs, last_productivity, rig_cou
     productivity_step = 0
 
     if not ignore_productivity:
-        coefficient = 2.5 / (
-        (rigs_target / last_rigs) + 1.5)  # вычисление изменение продуктивности буровых в зависимости от количества
-        productivity_step = (last_productivity * (
-        coefficient - 1)) / extrapolation_range  # вычисление шага продуктивности в прогнозе
+        coefficient = 2.5 / ((rigs_target / last_rigs) + 1.5)  # вычисление изменение продуктивности буровых в зависимости от количества
+        productivity_step = (last_productivity * (coefficient - 1)) / extrapolation_range  # вычисление шага продуктивности в прогнозе
 
     # Фаза роста
     for i in range(extrapolation_range):
