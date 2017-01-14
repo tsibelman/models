@@ -92,23 +92,22 @@ def production_model(extrapolation_range, ignore_productivity, *args):
     plt.savefig('chart1.png')  # сохранение нарисованного графика в файл
 
 
-def generate_forecast(extrapolation_range, last_rig_count, last_rig_productivity, rig_count_step,
-                      rig_productivity_step):
+def generate_forecast(extrapolation_range, last_rig_count, last_productivity, rig_count_step, productivity_step):
     forecast_rigs = []
     forecast_productivity = []
 
     # Фаза роста
     for i in range(extrapolation_range):
         forecast_rigs.append(last_rig_count + rig_count_step * (i + 1))
-        forecast_productivity.append(last_rig_productivity + rig_productivity_step * (i + 1))
+        forecast_productivity.append(last_productivity + productivity_step * (i + 1))
 
     last_rig_count = forecast_rigs[-1]
-    last_rig_productivity = forecast_productivity[-1]
+    last_productivity = forecast_productivity[-1]
 
     # Фаза стабильного плато
     for i in range(extrapolation_range):
         forecast_rigs.append(last_rig_count)
-        forecast_productivity.append(last_rig_productivity)
+        forecast_productivity.append(last_productivity)
 
     return forecast_rigs,forecast_productivity
 
