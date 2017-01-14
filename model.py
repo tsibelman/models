@@ -79,20 +79,21 @@ def production_model(extrapolation_range, ignore_productivity, *args):
         old_production_decline[0] = old_production_decline[1]
 
         production_denom_m = [x / 1000000 for x in production]
-        dates_main = generate_date_range('2007-01-01', historical_range + 1)
+        dates = generate_date_range('2007-01-01', model_range)
+        historical_dates = dates[:historical_range+1]
         if not cycle:  # рисование модельных данных без прогноза
-            chart1.plot(dates_main, production_denom_m[:historical_range + 1])
-            chart2.plot(dates_main, rig_counts[:historical_range+1])
-            chart3.plot(dates_main, new_production[:historical_range + 1])
-            chart3.plot(dates_main, old_production_decline[:historical_range + 1])
+            chart1.plot(historical_dates, production_denom_m[:historical_range + 1])
+            chart2.plot(historical_dates, rig_counts[:historical_range+1])
+            chart3.plot(historical_dates, new_production[:historical_range + 1])
+            chart3.plot(historical_dates, old_production_decline[:historical_range + 1])
 
         # рисование прогнозов
-        dates_forecast = generate_date_range('2017-01-01', 2 * extrapolation_range)
-        chart1.plot(dates_forecast, production_denom_m[historical_range:], ':')
-        chart2.plot(dates_forecast, rig_counts[historical_range+1:], ':')
+        forecast_dates = dates[historical_range:]
+        chart1.plot(forecast_dates, production_denom_m[historical_range:], ':')
+        chart2.plot(forecast_dates, rig_counts[historical_range+1:], ':')
         chart2.set_ylim(ymin=0)  # ордината от нуля
-        chart3.plot(dates_forecast, new_production[historical_range:])
-        chart3.plot(dates_forecast, old_production_decline[historical_range:], ':')
+        chart3.plot(forecast_dates, new_production[historical_range:])
+        chart3.plot(forecast_dates, old_production_decline[historical_range:], ':')
 
         cycle = True  # метка первого прохода цикла
 
@@ -105,7 +106,7 @@ def generate_forecast(extrapolation_range, last_rig_count, last_rig_productivity
     forecast_productivity = []
 
     # Фаза роста
-    for i in range(extrapolation_range):  # цикл по базовым начальным данным
+    for i in range(extrapolation_range):
         forecast_rigs.append(last_rig_count + rig_count_step * (i + 1))
         forecast_productivity.append(last_rig_productivity + rig_productivity_step * (i + 1))
 
@@ -113,7 +114,7 @@ def generate_forecast(extrapolation_range, last_rig_count, last_rig_productivity
     last_rig_productivity = forecast_productivity[-1]
 
     # Фаза стабильного плато
-    for i in range(extrapolation_range):  # цикл по базовым начальным данным
+    for i in range(extrapolation_range):
         forecast_rigs.append(last_rig_count)
         forecast_productivity.append(last_rig_productivity)
 
