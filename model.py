@@ -50,23 +50,19 @@ def production_model(extrapolation_range, ignore_productivity, *args):
         rigs.extend(forecast_rigs)
         wells_per_rig.extend(forecast_productivity)
 
-        new_production = []  # ввод добычи
-        row_matrix = []
-
-        # формирование массива добычи до начала ведения статистики EIA DPR (0,4 МБ/д на 2007 год)
-        for i in range(model_range):
-            row_matrix.append(405891 * well_profile[i + 75] * 11)
-            new_production.append(rigs[i] * wells_per_rig[i] / 1000)  # вычисление ввода добычи
+        # добычa до начала ведения статистики EIA DPR (0,4 МБ/д на 2007 год)
+        prod_before_DPR = [405891 * well_profile[i + 75] * 11 for i in range(model_range)]
 
         # формирование матрицы добычи по месяцам и по группам скважин
-        production_matrix = [row_matrix]
-        for i in range(model_range):
-            new_wells = rigs[i] * wells_per_rig[i]
-            row_matrix = [0] * i + [ new_wells * well_profile[j] for j in range(model_range)]
+        production_matrix = [prod_before_DPR]
+        for m in range(model_range):
+            new_wells = rigs[m] * wells_per_rig[m]
+            row_matrix = [0] * m + [ new_wells * well_profile[j] for j in range(model_range-m)]
             production_matrix.append(row_matrix)
 
-        # вычисление добычи
-        production = [sum(month_prod) for month_prod in zip(*production_matrix)]
+        production = [sum(month_prod) for month_prod in zip(*production_matrix)] # вычисление добычи
+
+        new_production = [rigs[i] * wells_per_rig[i] / 1000 for i in range(model_range)] # вычисление ввода добычи
 
         old_production_decline = [0] * model_range
         for i in range(1,model_range):
@@ -117,8 +113,8 @@ def generate_forecast(extrapolation_range, last_rig_count, last_rig_productivity
     return forecast_rigs,forecast_productivity
 
 
-def calculate_rig_productivity_step(extrapolation_range, last_rigs, last_productivity, rig_count_target):
-    coefficient = 2.5 / ((rig_count_target / last_rigs) + 1.5)  # вычисление изменение продуктивности буровых в зависимости от количества
+def calculate_rig_productivity_step(extrapolation_range, last_rigs, last_productivity, rigs_target):
+    coefficient = 2.5 / ((rigs_target / last_rigs) + 1.5)  # вычисление изменение продуктивности буровых в зависимости от количества
     return (last_productivity * (coefficient - 1)) / extrapolation_range  # вычисление шага продуктивности в прогнозе
 
 
